@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 from socket import *
 from math import *
 import threading
@@ -15,8 +16,12 @@ print("-----------------------------------------")
 server_socket = socket(AF_INET, SOCK_STREAM)
 server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 
-port = input("Enter server port: ")
-server_socket.bind(("localhost", int(port)))
+ip = input("Enter server IP (blank for localhost): ")
+port = input("Enter server port (blank for 8000): ")
+if len(ip) == 0: ip = "localhost"
+if len(port) == 0: port = 8000
+
+server_socket.bind((ip, int(port)))
 server_socket.listen(5)
 
 clients = []
@@ -41,7 +46,7 @@ try:
                     break
             # If their is no client left, stop the server
             if (len(clients) == 0):
-                print("All users has logged out. Server stopping...")
+                print("All users had logged out. Server stopping...")
                 global THREAD_STOP
                 THREAD_STOP = True
             self = None
@@ -55,9 +60,8 @@ try:
             while not THREAD_STOP:
                 msg = self.connector.recv(MAXSIZE).decode(ENCODING)
                 if (msg == "logout"):
-                    self.send_msg(Message("Server", "Logout"))
                     self.__del__()
-                    continue
+                    break
                 print(f"Received message from {self.alias}: {msg}")
                 messages_queue.push(Message(sender = self.alias, content = msg))
 
@@ -78,7 +82,7 @@ try:
             clients.append(Client(connector = c, alias = alias, addr = a))
             for client in clients:
                 if (client.alias != alias):
-                    client.send_msg(Message("Server", "New client has joined"))    
+                    client.send_msg(Message("Server", f"New client has joined: {alias}"))    
 
     listen_daemon = threading.Thread(target = listen_new_clients)
     broadcast_daemon = threading.Thread(target = broadcast)
@@ -98,4 +102,4 @@ finally:
     server_socket.close()
 
     for i in range(0, len(clients)):
-        del clients[i]
+        clients[i].__del__()
