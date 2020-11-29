@@ -1,6 +1,7 @@
+#!/usr/bin/python3
 from socket import *
 from queue_msg import *
-from client_frontend import *
+from qt5_frontend_client import *
 import threading
 import traceback
 import time
@@ -11,8 +12,9 @@ THREAD_STOP = False
 
 print("Multithread LAN chatting client.")
 print("-----------------------------------------")
-ip = input("Enter server IP/hostname: ")
-port = input("Enter server port: ")
+ip = input("Enter server IP/hostname (blank for localhost): ")
+port = input("Enter server port (blank for 8000): ")
+if len(port) == 0: port = 8000
 
 client_socket = socket (AF_INET, SOCK_STREAM)
 client_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -27,27 +29,46 @@ MainWindow = QMainWindow()
 ui = Ui_Form()
 ui.setupUi(MainWindow)
 
-def receive():
-    while not THREAD_STOP:
-        msg = client_socket.recv(MAXSIZE).decode(ENCODING)
-        sender, content = msg.split("|||")
-        msg = f"[{sender}] {content}"
-        print(f"Message received: {msg}")
-        ui.updateMessageHistoryBox(msg)
+class MsgRetrieveThread(QThread):
+    msg_received = pyqtSignal(object)
+
+    def __init__(self):
+        super().__init__()
+        
+    def run(self):
+        while True:
+            try:
+                msg = client_socket.recv(MAXSIZE).decode(ENCODING)
+                sender, content = msg.split("|||")
+            except:
+                # Probably disconnected
+                print(f"Received: {msg}")
+                print("Server sent trash information. Disconnecting...")
+                return
+            
+            msg = f"[{sender}] {content}"
+            print(f"Message received: {msg}")
+
+            self.msg_received.emit(msg)
 
 def send():
     msg = str(ui.messageInputBox.toPlainText())
     if (len(msg) > 0):
         client_socket.sendall(msg.encode(ENCODING))
-        ui.updateMessageHistoryBox(msg)
+        print(f"Message sent: {msg}")
+        ui.updateMessageHistoryBox("[Me] " + msg)
+        ui.clearMessageBox()
     if (msg == "logout"):
-        global THREAD_STOP
-        THREAD_STOP = True
+        print("Connection closure requested.")
+        client_socket.close()
+        MainWindow.close()
 
+# Bind Send button and Enter key to send function
 ui.sendButton.clicked.connect(send)
 
-# Start background receive services
-receive_daemon = threading.Thread(target=receive)
+# Start background receive thread
+receive_daemon = MsgRetrieveThread()
+receive_daemon.msg_received.connect(ui.updateMessageHistoryBox)
 receive_daemon.start()
 
 # Show application information
@@ -61,5 +82,7 @@ MainWindow.setWindowTitle(f"LAN Chatting Client - {alias}")
 MainWindow.show()
 r = app.exec_()
 
-receive_daemon.join()
+client_socket.close()
+print("Connection closed.")
+
 sys.exit(r)
