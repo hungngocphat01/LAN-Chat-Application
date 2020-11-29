@@ -14,7 +14,7 @@
 - **queue_msg.py**: definition of ``Queue`` and ``Message`` classes.
 
 ## Initialization process
-- Server should be started first. Upon starting up, a server port will be required.
+- Server should be started first. Upon starting up, a server port has to be specified.
 - Then client(s) should also be started. Server IP and server port will be asked.
 - Server accepts connection from client.
 - On the client side, an alias will be required.
@@ -39,5 +39,5 @@
 
 ## Bugs
 - When a new message arrives at the client side, the user have to click on the message box to update it (problems of multithreading, will fix later).
-- Even when all clients have been left, the server has to be stopped by sending ``Ctrl-C``.
+- Even when all clients have been left, the server has to be stopped manually by sending ``Ctrl-C``.
 
