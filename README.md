@@ -1,7 +1,7 @@
 # Simple Python LAN chatting application
 
 ## Introduction
-- This project is a simple LAN chatting application written Python 3 with multithreading, implemented in client - server model.
+- This project is a simple LAN chatting application written in Python 3 with multithreading, implemented in client - server model.
 - Uses low-level sockets to send/receive data.
 - Graphical front-end written using PyQt5.
 
@@ -34,8 +34,8 @@
     - Finally, it will be distributed to all other clients.
 - If *"logout"* message is sent
     - The background threads from the client side will cease.
-    - The server will close its connection with the client, and remove the client from list.
-    - If there is no client left, the server will stop background threads and stop.
+    - The server will close its connection with the client, and remove the client from connection list.
+    - If there is no client left, the server will stop its background threads and exit.
 
 ## Bugs
 - When a new message arrives at the client side, the user have to click on the message box to update it (problems of multithreading, will fix later).
