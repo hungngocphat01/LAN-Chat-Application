@@ -38,6 +38,5 @@
     - If there is no client left, the server will stop its background threads and exit.
 
 ## Bugs
-- When a new message arrives at the client side, the user have to click on the message box to update it (problems of multithreading, will fix later).
-- Even when all clients have been left, the server has to be stopped manually by sending ``Ctrl-C``.
+- Almost no.
 
