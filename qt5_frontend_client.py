@@ -18,6 +18,7 @@ class Ui_Form(object):
         if not Form.objectName():
             Form.setObjectName(u"Form")
         Form.setFixedSize(632, 451)
+        Form.setWindowFlag(Qt.WindowCloseButtonHint, False)
         sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -54,15 +55,18 @@ class Ui_Form(object):
     # setupUi
 
     def updateMessageHistoryBox(self, msg):
-        self.messageHistoryBox.appendPlainText(f"[Me] {msg}")
+        self.messageHistoryBox.appendPlainText(msg)
+
     def clearMessageBox(self):
         self.messageInputBox.setPlainText("")
 
     def retranslateUi(self, Form):
         Form.setWindowTitle(QCoreApplication.translate("Form", u"LAN Chatting Client", None))
         self.label.setText(QCoreApplication.translate("Form", u"Message history", None))
-        self.label_2.setText(QCoreApplication.translate("Form", u"Message content", None))
+        self.label_2.setText(QCoreApplication.translate("Form", u"Message content (send 'logout' to quit)", None))
+        self.label_2.adjustSize()
         self.sendButton.setText(QCoreApplication.translate("Form", u"Send", None))
+    
     # retranslateUi
 
 
