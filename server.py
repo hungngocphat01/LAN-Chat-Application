@@ -5,6 +5,7 @@ import threading
 import traceback
 from queue_msg import *
 import sys
+import time
 
 ENCODING = "utf-8"
 MAXSIZE = 10000
@@ -52,26 +53,56 @@ try:
             self = None
             
         def send_msg(self, msg: Message):
-            content = msg.sender + "|||" + msg.content
-            self.connector.sendall(content.encode(ENCODING))
-            print(f"Message sent to {self.alias}")
+            if (msg.mtype == "file"):
+                self.connector.sendall("$$file$$".encode(ENCODING))
+                self.connector.sendall(msg.sender.encode(ENCODING))
+                self.connector.sendall(msg.content[0].encode(ENCODING))
+                consent = self.connector.recv(MAXSIZE).decode(ENCODING)
+                if (consent == "$$accept$$"):
+                    # Send
+                    self.connector.sendall(msg.content[1])
+                else:
+                    print(f"{self.alias} refused to receive file.")
+
+            else:
+                content = msg.sender + "|||" + msg.content
+                self.connector.sendall(content.encode(ENCODING))
+                print(f"Message sent to {self.alias}")
 
         def receive_msg(self):
             while not THREAD_STOP:
                 msg = self.connector.recv(MAXSIZE).decode(ENCODING)
-                if (msg == "logout"):
+                if (msg == "$$file$$"):
+                    time.sleep(0.2)
+                    filename = self.connector.recv(MAXSIZE).decode(ENCODING)
+                    content = b""
+                    filebytes = []
+                    time.sleep(0.2)
+                    while len(content) > 0:
+                        content = self.connector.recv(MAXSIZE)
+                        filebytes.append(content)
+                    pkg = (filename, filebytes)
+                    print(f"Received file from {self.alias}: {filename}")
+                    messages_queue.push(Message(sender=self.alias, content=pkg, mtype="file"))
+                elif (msg == "logout"):
                     self.__del__()
                     break
-                print(f"Received message from {self.alias}: {msg}")
-                messages_queue.push(Message(sender = self.alias, content = msg))
+                else:
+                    print(f"Received message from {self.alias}: {msg}")
+                    messages_queue.push(Message(sender = self.alias, content = msg))
+    def sendtoall(msg: Message):
+        if (len(clients) <= 1):
+            print("Not enough client to distrubute message.")
+            return
+        for client in clients:
+            if (client.alias != msg.sender):
+                client.send_msg(msg)     
 
     def broadcast():
         while not THREAD_STOP:
             while (messages_queue.size() > 0):
                 msg = messages_queue.pop()
-                for client in clients:
-                    if (client.alias != msg.sender):
-                        client.send_msg(msg)     
+                sendtoall(msg)
 
     def listen_new_clients():
         while not THREAD_STOP:

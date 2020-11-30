@@ -14,6 +14,7 @@ class Queue():
             return None
 
 class Message():
-    def __init__(self, sender: str, content: str):
+    def __init__(self, sender: str, content, mtype: str = "text"):
+        self.mtype = mtype
         self.sender = sender
         self.content = content

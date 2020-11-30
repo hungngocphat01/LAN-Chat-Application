@@ -5,6 +5,7 @@ from qt5_frontend_client import *
 import threading
 import traceback
 import time
+import os.path
 
 ENCODING = "utf-8"
 MAXSIZE = 10000
@@ -39,7 +40,33 @@ class MsgRetrieveThread(QThread):
         while True:
             try:
                 msg = client_socket.recv(MAXSIZE).decode(ENCODING)
-                sender, content = msg.split("|||")
+                # Server wants to send file
+                if (msg == "$$file$$"):
+                    time.sleep(0.2)
+                    sender = client_socket.recv(MAXSIZE).decode(ENCODING)
+                    time.sleep(0.2)
+                    filename = client_socket.recv(MAXSIZE).decode(ENCODING)
+                    accept = QMessageBox(parent=MainWindow, text=f"Do you want to receive {filename} from {sender}?", buttons=QMessageBox.Yes | QMessageBox.No)
+                    if (accept == QMessageBox.Yes):
+                        # Notify to server
+                        client_socket.sendall("$$accept$$".encode(ENCODING))
+                        # Receive the whole file
+                        filebytes = []
+                        time.sleep(0.2)
+                        while True:
+                            content = client_socket.recv(MAXSIZE)
+                            if (len(content) == 0):
+                                break
+                            filebytes.append(content)
+                        with open(f"{sender}_{filename}", mode="wb") as f:
+                            for chunk in filebytes:
+                                f.write(chunk)
+                    else:
+                        client_socket.sendall("$$refuse$$".encode(ENCODING))
+
+                # Normal text message
+                else:
+                    sender, content = msg.split("|||")
             except:
                 # Probably disconnected
                 print(f"Received: {msg}")
@@ -54,14 +81,33 @@ class MsgRetrieveThread(QThread):
 def send():
     msg = str(ui.messageInputBox.toPlainText())
     if (len(msg) > 0):
-        client_socket.sendall(msg.encode(ENCODING))
-        print(f"Message sent: {msg}")
-        ui.updateMessageHistoryBox("[Me] " + msg)
-        ui.clearMessageBox()
-    if (msg == "logout"):
-        print("Connection closure requested.")
-        client_socket.close()
-        MainWindow.close()
+        # If user wants to send a file
+        if (msg.find("file$") == 0):
+            path = msg.split("file$")
+            if (len(path) <= 1 or not os.path.exists(path[1])):
+                QMessageBox(parent=MainWindow, text="Invalid path. Please check again!")
+            else:
+                path = path[1]
+                # Send: "$$file$$"
+                client_socket.sendall("$$file$$".encode(ENCODING))
+                # Send filename
+                path = path.replace("\\", "/")
+                filename = path.split("/")[-1]
+                client_socket.sendall(filename.encode(ENCODING))
+                # Send file content
+                with open(path, mode="rb") as f:
+                    client_socket.sendall(f.read())
+        # Normal text:
+        else:
+            client_socket.sendall(msg.encode(ENCODING))
+            print(f"Message sent: {msg}")
+            ui.updateMessageHistoryBox("[Me] " + msg)
+            ui.clearMessageBox()
+        # If user wants to logout
+        if (msg == "logout"):
+            print("Connection closure requested.")
+            client_socket.close()
+            MainWindow.close()
 
 # Bind Send button and Enter key to send function
 ui.sendButton.clicked.connect(send)
