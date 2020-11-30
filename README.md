@@ -1,7 +1,7 @@
 # Simple Python LAN chatting application
 
 ## Introduction
-- This project is a simple LAN chatting application written Python 3 with multithreading, implemented in client - server model.
+- This project is a simple LAN chatting application written in Python 3 with multithreading, implemented in client - server model.
 - Uses low-level sockets to send/receive data.
 - Graphical front-end written using PyQt5.
 - Capable of sending/receiving file.
