@@ -3,12 +3,10 @@ from socket import *
 from math import *
 import threading
 import traceback
-from queue_msg import *
+from common_definitions import *
 import sys
 import time
 
-ENCODING = "utf-8"
-MAXSIZE = 10000
 THREAD_STOP = False
 
 print("Multithread LAN chatting server.")
@@ -54,42 +52,38 @@ try:
             
         def send_msg(self, msg: Message):
             if (msg.mtype == "file"):
-                self.connector.sendall("$$file$$".encode(ENCODING))
-                self.connector.sendall(msg.sender.encode(ENCODING))
-                self.connector.sendall(msg.content[0].encode(ENCODING))
-                consent = self.connector.recv(MAXSIZE).decode(ENCODING)
-                if (consent == "$$accept$$"):
-                    # Send
-                    self.connector.sendall(msg.content[1])
-                else:
-                    print(f"{self.alias} refused to receive file.")
+                # FILESIGNALsender\nfilename\ncontent
+                filename = msg.content[0]
+                filecontent = msg.content[1]
+                send_buffer = FILE_SIGNAL + self.alias.encode(ENCODING) + b"\n" + filename + b"\n" + filecontent
 
+                print(f"Sending file {filename.decode(ENCODING)} to {self.alias}")
+                self.connector.sendall(send_buffer)
+                print(f"{filename.decode(ENCODING)} sent to {self.alias}")
             else:
-                content = msg.sender + "|||" + msg.content
+                content = msg.sender + "\n" + msg.content
                 self.connector.sendall(content.encode(ENCODING))
                 print(f"Message sent to {self.alias}")
 
         def receive_msg(self):
             while not THREAD_STOP:
-                msg = self.connector.recv(MAXSIZE).decode(ENCODING)
-                if (msg == "$$file$$"):
-                    time.sleep(0.2)
-                    filename = self.connector.recv(MAXSIZE).decode(ENCODING)
-                    content = b""
-                    filebytes = []
-                    time.sleep(0.2)
-                    while len(content) > 0:
-                        content = self.connector.recv(MAXSIZE)
-                        filebytes.append(content)
-                    pkg = (filename, filebytes)
-                    print(f"Received file from {self.alias}: {filename}")
-                    messages_queue.push(Message(sender=self.alias, content=pkg, mtype="file"))
-                elif (msg == "logout"):
+                msg = recvall(self.connector)
+                # FILESIGNALfilename\nfile_content
+                L = len(FILE_SIGNAL)
+                if (msg[:L] == FILE_SIGNAL):
+                    D = msg.find(b"\n", L + 1)
+                    filename = msg[L:D]
+                    content = msg[D + 1:]
+                    messages_queue.push(Message(sender = self.alias, content = (filename, content), mtype="file"))
+                    print(f"File received from {self.alias}: {filename.decode(ENCODING)}")
+                elif (msg == b"logout"):
                     self.__del__()
                     break
                 else:
+                    msg = msg.decode(ENCODING)
                     print(f"Received message from {self.alias}: {msg}")
                     messages_queue.push(Message(sender = self.alias, content = msg))
+
     def sendtoall(msg: Message):
         if (len(clients) <= 1):
             print("Not enough client to distrubute message.")
