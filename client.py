@@ -1,14 +1,12 @@
 #!/usr/bin/python3
 from socket import *
-from queue_msg import *
+from common_definitions import *
 from qt5_frontend_client import *
 import threading
 import traceback
 import time
 import os.path
 
-ENCODING = "utf-8"
-MAXSIZE = 10000
 THREAD_STOP = False
 
 print("Multithread LAN chatting client.")
@@ -38,45 +36,35 @@ class MsgRetrieveThread(QThread):
         
     def run(self):
         while True:
-            try:
-                msg = client_socket.recv(MAXSIZE).decode(ENCODING)
-                # Server wants to send file
-                if (msg == "$$file$$"):
-                    time.sleep(0.2)
-                    sender = client_socket.recv(MAXSIZE).decode(ENCODING)
-                    time.sleep(0.2)
-                    filename = client_socket.recv(MAXSIZE).decode(ENCODING)
-                    accept = QMessageBox(parent=MainWindow, text=f"Do you want to receive {filename} from {sender}?", buttons=QMessageBox.Yes | QMessageBox.No)
-                    if (accept == QMessageBox.Yes):
-                        # Notify to server
-                        client_socket.sendall("$$accept$$".encode(ENCODING))
-                        # Receive the whole file
-                        filebytes = []
-                        time.sleep(0.2)
-                        while True:
-                            content = client_socket.recv(MAXSIZE)
-                            if (len(content) == 0):
-                                break
-                            filebytes.append(content)
-                        with open(f"{sender}_{filename}", mode="wb") as f:
-                            for chunk in filebytes:
-                                f.write(chunk)
-                    else:
-                        client_socket.sendall("$$refuse$$".encode(ENCODING))
+            try:  
+                msg = recvall(client_socket)
+                L = len(FILE_SIGNAL)
 
-                # Normal text message
+                if (msg[:L] == FILE_SIGNAL):
+                    # FILESIGNALsender\nfilename\ncontent
+                    D = msg.find(b"\n", L + 1)
+                    sender = msg[L:D].decode(ENCODING)
+                    K = msg.find(b"\n", D + 1)
+                    filename = msg[D + 1:K].decode(ENCODING)
+                    content = msg[K + 1:]
+                    print(f"File received: {sender}_{filename}")
+
+                    with open(f"{sender}_{filename}", mode="wb") as f:
+                        f.write(content)
+                    
+                    print(f"File written: {sender}_{filename}")
+                    self.msg_received.emit(f"File received: {sender}_{filename}")
                 else:
-                    sender, content = msg.split("|||")
+                    sender, content = msg.decode(ENCODING).split("\n")
+                    msg = f"[{sender}] {content}"
+                    print(f"Message received: {msg}")
+                    self.msg_received.emit(msg)
             except:
                 # Probably disconnected
                 print(f"Received: {msg}")
                 print("Server sent trash information. Disconnecting...")
                 return
             
-            msg = f"[{sender}] {content}"
-            print(f"Message received: {msg}")
-
-            self.msg_received.emit(msg)
 
 def send():
     msg = str(ui.messageInputBox.toPlainText())
@@ -88,15 +76,16 @@ def send():
                 QMessageBox(parent=MainWindow, text="Invalid path. Please check again!")
             else:
                 path = path[1]
-                # Send: "$$file$$"
-                client_socket.sendall("$$file$$".encode(ENCODING))
-                # Send filename
+                # Read file to memory
+                with open(path, mode="rb") as f:
+                    file_content = f.read()
+                # Parse filename
                 path = path.replace("\\", "/")
                 filename = path.split("/")[-1]
-                client_socket.sendall(filename.encode(ENCODING))
-                # Send file content
-                with open(path, mode="rb") as f:
-                    client_socket.sendall(f.read())
+
+                msg_content = FILE_SIGNAL + filename.encode(ENCODING) + b"\n" + file_content
+
+                client_socket.sendall(msg_content)
         # Normal text:
         else:
             client_socket.sendall(msg.encode(ENCODING))
