@@ -1,12 +1,12 @@
 # Simple Python LAN chatting application
 
 ## Introduction
-- This project is a simple LAN chatting application written in Python 3 with multithreading, implemented in client - server model.
+- This project is a simple LAN chatting application written in Python 3 with multi-threading, implemented in client - server model.
 - Uses low-level sockets to send/receive data.
 - Graphical front-end written using PyQt5.
 - Capable of sending/receiving file.
 
-## Prequisites
+## Prerequisites
 - Python 3 (tested on 3.8.6).
 - pyqt5.
 
@@ -30,7 +30,7 @@
 - Message processing:
     - The message will be packaged in the following structure:
         ```
-        sender_alias|||message_content
+        sender_alias\nmessage_content
         ```
     - Finally, it will be distributed to all other clients.
 - If *"logout"* message is sent
@@ -42,17 +42,20 @@
     ```
     file$<path>
     ```
-- Client sends ``$$file$$`` signal to server.
-- Server prepares to receive the file.
-- Clients send filename and file content respectively.
-- Server receive both respectively and enqueue it like a normal text message.
-- Server distributes the ``$$file`` signal to other clients, then the file sender and filename, waiting for client's approval.
-- If an agreement has been detected, the server will send the whole file to the client.
-- The clients receive the file by chunks (~10KB each by default), then write it to the current directory with filename:
+- Client packages the file and sends to server in the following format:
+    ```
+    <FILE_SIGNAL><filename>\n<file content>
+
+    FILE_SIGNAL is b"FILESIGNAL\r\n\x00" by default.
+    ```
+- Server reveives and broadcast to all other clients in the following format:
+    ```
+    <FILE_SIGNAL><sender>\n<filename>\n<file content>
+    ```
+- Finally, client receives the file and saves in the below filename structure:
     ```
     <sender alias>_<original filename>
     ```
 
 ## Bugs
-- Cannot send and receive file at the moment.
-
+- Receive/send file works, but not as expected (information order seems to have been fcked up).
