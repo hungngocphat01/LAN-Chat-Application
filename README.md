@@ -1,5 +1,7 @@
 # Simple Python LAN chatting application
 
+**Disclaimer: I did it wrong by not sending the message size prior to the actual message, so the program is very buggy. It is not recommended to use this program as a reference for your project.**
+
 ## Introduction
 - This project is a simple LAN chatting application written in Python 3 with multi-threading, implemented in client - server model.
 - Uses low-level sockets to send/receive data.
